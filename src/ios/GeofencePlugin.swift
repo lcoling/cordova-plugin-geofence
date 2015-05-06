@@ -164,6 +164,8 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
         if (!CLLocationManager.isMonitoringAvailableForClass(CLRegion)) {
             log("Geofencing not available")
         }
+        
+        log("GeoNotificationManager # of monitored regions: \(locationManager.monitoredRegions.count)")
     }
 
     func addOrUpdateGeoNotification(geoNotification: JSON) {
@@ -206,10 +208,10 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
 
     func getMonitoredRegion(id: String) -> CLRegion? {
         for object in locationManager.monitoredRegions {
-            let region = object as! CLRegion
-
-            if (region.identifier == id) {
-                return region
+            if let region = object as? CLCircularRegion {
+                if (region.identifier == id) {
+                    return region
+                }
             }
         }
         return nil
@@ -227,9 +229,10 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     func removeAllGeoNotifications() {
         store.clear()
         for object in locationManager.monitoredRegions {
-            let region = object as! CLRegion
-            log("Stoping monitoring region \(region.identifier)")
-            locationManager.stopMonitoringForRegion(region)
+            if let region = object as? CLCircularRegion {
+                log("Stoping monitoring region \(region.identifier)")
+                locationManager.stopMonitoringForRegion(region)
+            }
         }
     }
 
@@ -256,11 +259,12 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     }
 
     func locationManager(manager: CLLocationManager!, didStartMonitoringForRegion region: CLRegion!) {
-        let lat = (region as! CLCircularRegion).center.latitude
-        let lng = (region as! CLCircularRegion).center.longitude
-        let radius = (region as! CLCircularRegion).radius
-
-        log("Starting monitoring for region \(region) lat \(lat) lng \(lng)")
+        if let geofence = region as? CLCircularRegion {
+            log("Starting monitoring for region \(region) lat \(geofence.center.latitude) lng \(geofence.center.longitude)")
+        }
+        else {
+            log("Started monitoring an iBeacon")
+        }
     }
 
     func locationManager(manager: CLLocationManager, didDetermineState state: CLRegionState, forRegion region: CLRegion) {
@@ -272,11 +276,16 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     }
 
     func handleTransition(region: CLRegion!) {
-        if let geo = store.findById(region.identifier) {
-            if let notification = geo["notification"].asDictionary {
-                notifyAbout(geo)
+        if let geofence = region as? CLCircularRegion {
+            if let geo = store.findById(geofence.identifier) {
+                if let notification = geo["notification"].asDictionary {
+                    notifyAbout(geo)
+                }
+                GeofencePlugin.fireReceiveTransition(geo)
             }
-            GeofencePlugin.fireReceiveTransition(geo)
+        }
+        else {
+            log("Ignoring transition for iBeacon")
         }
     }
 
