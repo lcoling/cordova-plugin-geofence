@@ -29,9 +29,12 @@ var GeofencePluginWebView: UIWebView?
         //faker.start()
         GeofencePluginWebView = self.webView
 
+        /*
         if iOS8 {
             promptForNotificationPermission()
         }
+        */
+        
         var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
         commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
     }
@@ -44,6 +47,11 @@ var GeofencePluginWebView: UIWebView?
         )
     }
 
+    func deviceready(command: CDVInvokedUrlCommand) {
+        var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
+        commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
+    }
+    
     func addOrUpdate(command: CDVInvokedUrlCommand) {
         dispatch_async(dispatch_get_global_queue(priority, 0)) {
             // do some task
