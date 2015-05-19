@@ -305,6 +305,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
         notification.fireDate = dateTime
         notification.soundName = UILocalNotificationDefaultSoundName
         notification.alertBody = geo["notification"]["text"].asString!
+        notification.userInfo = geo["notification"].asDictionary
         UIApplication.sharedApplication().scheduleLocalNotification(notification)
 
         if let vibrate = geo["notification"]["vibrate"].asArray {
