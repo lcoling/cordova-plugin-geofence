@@ -12,6 +12,7 @@ import AudioToolbox
 let TAG = "GeofencePlugin"
 let iOS8 = floor(NSFoundationVersionNumber) > floor(NSFoundationVersionNumber_iOS_7_1)
 let iOS7 = floor(NSFoundationVersionNumber) <= floor(NSFoundationVersionNumber_iOS_7_1)
+let DefaultDelayInSeconds = 10
 
 func log(message: String){
     NSLog("%@ - %@", TAG, message)
@@ -29,11 +30,9 @@ var GeofencePluginWebView: UIWebView?
         //faker.start()
         GeofencePluginWebView = self.webView
 
-        /*
-        if iOS8 {
-            promptForNotificationPermission()
-        }
-        */
+        //if iOS8 {
+        //    promptForNotificationPermission()
+        //}
         
         var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
         commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
@@ -318,9 +317,15 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     func notifyAbout(geo: JSON) {
         log("Creating notification")
         
+        var delayInSeconds = DefaultDelayInSeconds;
+        
+        if let delay = geo["triggerDelay"].asInt {
+            delayInSeconds = delay;
+        }
+        
         // for notification triggering, we add 5 seconds to current time to allow for plugin to do a JS callback
         let comps = NSDateComponents()
-        comps.second = 10;
+        comps.second = delayInSeconds;
         
         let cal = NSCalendar.currentCalendar()
         var fireDate = cal.dateByAddingComponents(comps, toDate: NSDate(), options: nil)
