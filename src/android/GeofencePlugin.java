@@ -53,6 +53,10 @@ public class GeofencePlugin extends CordovaPlugin {
             }
             geoNotificationManager.addGeoNotifications(geoNotifications,
                     callbackContext);
+        } else if (action.equals("fireGeofence")) {
+            String id = args.getString(0);
+            geoNotificationManager.fireGeofence(id, callbackContext);
+            // fire geofence
         } else if (action.equals("remove")) {
             List<String> ids = new ArrayList<String>();
             for (int i = 0; i < args.length(); i++) {

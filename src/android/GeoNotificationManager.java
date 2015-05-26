@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.apache.cordova.CallbackContext;
 
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -26,6 +27,7 @@ public class GeoNotificationManager {
     private List<Geofence> geoFences;
     private PendingIntent pendingIntent;
     private GoogleServiceCommandExecutor googleServiceCommandExecutor;
+    private GeoNotificationNotifier notifier;
 
     public GeoNotificationManager(Context context) {
         this.context = context;
@@ -38,6 +40,10 @@ public class GeoNotificationManager {
         } else {
             logger.log(Log.DEBUG, "Google play services not available");
         }
+
+        notifier = new GeoNotificationNotifier(
+                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE),
+                context);
     }
 
     public void loadFromStorageAndInitializeGeofences() {
@@ -120,6 +126,22 @@ public class GeoNotificationManager {
             geoNotificationsIds.add(geo.id);
         }
         removeGeoNotifications(geoNotificationsIds, callback);
+    }
+
+    public void fireGeofence(String id, final CallbackContext callback) {
+
+        List<GeoNotification> geoNotifications = new ArrayList<GeoNotification>();
+
+        GeoNotification geoNotification = geoNotificationStore
+                .getGeoNotification(id);
+
+        if (geoNotification != null) {
+            if (geoNotification.notification != null) {
+                notifier.notify(geoNotification.notification);
+            }
+            geoNotifications.add(geoNotification);
+            GeofencePlugin.fireReceiveTransition(geoNotifications);
+        }
     }
 
     /*
