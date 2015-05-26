@@ -98,6 +98,15 @@ var GeofencePluginWebView: UIWebView?
         }
     }
 
+    func fireGeofence(command: CDVInvokedUrlCommand) {
+        var id: String = command.argumentAtIndex(0) as! String;
+        self.geoNotificationManager.fireGeofence(id)
+        dispatch_async(dispatch_get_main_queue()) {
+            var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
+            self.commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
+        }
+    }
+    
     class func fireReceiveTransition(geoNotification: JSON) {
         var mustBeArray = [JSON]()
         mustBeArray.append(geoNotification)
@@ -283,6 +292,15 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
         log("Monitoring region " + region.identifier + " failed " + error.description)
     }
 
+    func fireGeofence(id: String) {
+        if let geo = store.findById(id) {
+            if let notification = geo["notification"].asDictionary {
+                notifyAbout(geo)
+            }
+            GeofencePlugin.fireReceiveTransition(geo)
+        }
+    }
+    
     func handleTransition(region: CLRegion!) {
         if let geofence = region as? CLCircularRegion {
             if let geo = store.findById(geofence.identifier) {
@@ -299,13 +317,21 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
 
     func notifyAbout(geo: JSON) {
         log("Creating notification")
+        
+        // for notification triggering, we add 5 seconds to current time to allow for plugin to do a JS callback
+        let comps = NSDateComponents()
+        comps.second = 10;
+        
+        let cal = NSCalendar.currentCalendar()
+        var fireDate = cal.dateByAddingComponents(comps, toDate: NSDate(), options: nil)
+        
         var notification = UILocalNotification()
         notification.timeZone = NSTimeZone.defaultTimeZone()
-        var dateTime = NSDate()
-        notification.fireDate = dateTime
+        notification.fireDate = fireDate
         notification.soundName = UILocalNotificationDefaultSoundName
         notification.alertBody = geo["notification"]["text"].asString!
-        notification.userInfo = geo["notification"].asDictionary
+        notification.userInfo = buildUserInfoDictionary(geo)
+        
         UIApplication.sharedApplication().scheduleLocalNotification(notification)
 
         if let vibrate = geo["notification"]["vibrate"].asArray {
@@ -313,6 +339,23 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
                 AudioServicesPlayAlertSound(SystemSoundID(kSystemSoundID_Vibrate))
             }
         }
+    }
+    
+    func buildUserInfoDictionary(geo: JSON) -> [NSObject:AnyObject] {
+        var userInfo = NSMutableDictionary()
+
+        userInfo.setObject(geo["notification"]["id"].asInt!, forKey:"id")
+        userInfo.setObject(geo["notification"]["title"].asString!, forKey:"title")
+        userInfo.setObject(geo["notification"]["text"].asString!, forKey:"text")
+        userInfo.setObject(geo["notification"]["icon"].asString!, forKey:"icon")
+        userInfo.setObject(geo["notification"]["smallIcon"].asString!, forKey:"smallIcon")
+        
+        var survey = NSMutableDictionary()
+        survey.setObject(geo["notification"]["data"]["id"].asString!, forKey: "id")
+        
+        userInfo.setObject(survey, forKey:"data")
+        
+        return userInfo as [NSObject : AnyObject]
     }
 }
 

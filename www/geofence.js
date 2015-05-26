@@ -87,6 +87,11 @@ Geofence.prototype.onNotificationClicked = function(notificationData){
 
 };
 
+Geofence.prototype.fireGeofence = function (id, success, error) {
+    return execPromise(success, error, 'GeofencePlugin', 'fireGeofence', [id]);
+};
+
+
 function execPromise(success, error, pluginName, method, args) {
     return new Promise(function (resolve, reject) {
         exec(function (result) {
