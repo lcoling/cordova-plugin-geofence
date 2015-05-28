@@ -30,9 +30,9 @@ var GeofencePluginWebView: UIWebView?
         //faker.start()
         GeofencePluginWebView = self.webView
 
-        //if iOS8 {
-        //    promptForNotificationPermission()
-        //}
+        if iOS8 {
+            promptForNotificationPermission()
+        }
         
         var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
         commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
@@ -162,6 +162,7 @@ class GeofenceFaker {
 class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     let locationManager = CLLocationManager()
     let store = GeoNotificationStore()
+    var requestedPermission = false
 
     override init() {
         log("GeoNotificationManager init")
@@ -173,19 +174,28 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
         } else {
             log("Location services enabled")
         }
-        if iOS8 {
-            locationManager.requestAlwaysAuthorization()
-        }
 
         if (!CLLocationManager.isMonitoringAvailableForClass(CLRegion)) {
             log("Geofencing not available")
         }
-        
-        log("GeoNotificationManager # of monitored regions: \(locationManager.monitoredRegions.count)")
+    }
+    
+    // Call this before modifying geofences.
+    // We don't do this in init() as we want to delay the permission popup until
+    // we've explained to the user why we need the permission in the first place.
+    func requestPermission() {
+        if (!requestedPermission) {
+            requestedPermission = true
+            if iOS8 {
+                locationManager.requestAlwaysAuthorization()
+            }
+        }
     }
 
     func addOrUpdateGeoNotification(geoNotification: JSON) {
         log("GeoNotificationManager addOrUpdate")
+        
+        requestPermission()
 
         if (!CLLocationManager.locationServicesEnabled()) {
             log("Locationservices is not enabled")
@@ -223,6 +233,8 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     }
 
     func getMonitoredRegion(id: String) -> CLRegion? {
+        requestPermission()
+        
         for object in locationManager.monitoredRegions {
             if let region = object as? CLCircularRegion {
                 if (region.identifier == id) {
@@ -234,6 +246,8 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     }
 
     func removeGeoNotification(id: String) {
+        requestPermission()
+        
         store.remove(id)
         var region = getMonitoredRegion(id)
         if (region != nil) {
@@ -243,6 +257,8 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     }
 
     func removeAllGeoNotifications() {
+        requestPermission()
+        
         store.clear()
         for object in locationManager.monitoredRegions {
             if let region = object as? CLCircularRegion {
