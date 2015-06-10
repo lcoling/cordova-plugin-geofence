@@ -3,7 +3,7 @@ var exec = require('cordova/exec'),
     channel = require('cordova/channel'),
     geofence,
     Geofence = function () {
-
+		var queuedGeofences = null;
     };
 
 /**
@@ -91,6 +91,23 @@ Geofence.prototype.fireGeofence = function (id, success, error) {
     return execPromise(success, error, 'GeofencePlugin', 'fireGeofence', [id]);
 };
 
+Geofence.prototype.queueGeofencesForTransition = function(geofences) {
+	if (this.receiveTransition) {
+		this.receiveTransition(geofences);
+	}	
+	else {
+		this.queuedGeofences = geofences;
+	}
+		
+};
+
+Geofence.prototype.fireQueuedGeofences = function() {
+	if (this.queuedGeofences) {
+		var geofences = queuedGeofences;
+		this.receiveTransition(geofences);
+		this.queuedGeofences = null;
+	}
+};
 
 function execPromise(success, error, pluginName, method, args) {
     return new Promise(function (resolve, reject) {

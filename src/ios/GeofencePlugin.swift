@@ -18,20 +18,25 @@ func log(message: String){
     NSLog("%@ - %@", TAG, message)
 }
 
+var savedTriggeredGeofences = [JSON]()
 var GeofencePluginWebView: UIWebView?
 
 @objc(HWPGeofencePlugin) class GeofencePlugin : CDVPlugin {
     let geoNotificationManager = GeoNotificationManager()
     let priority = DISPATCH_QUEUE_PRIORITY_DEFAULT
-
-    func initialize(command: CDVInvokedUrlCommand) {
-        log("Plugin initialization");
-        //let faker = GeofenceFaker(manager: geoNotificationManager)
-        //faker.start()
+    
+    override func pluginInitialize() {
+        log("Plugin initialization")
         GeofencePluginWebView = self.webView
-
-        if iOS8 {
-            promptForNotificationPermission()
+    }
+    
+    func initialize(command: CDVInvokedUrlCommand) {
+        log("initialize method invoked")
+        
+        if (savedTriggeredGeofences.count > 0) {
+            log("Firing saved transitions - transition count: \(savedTriggeredGeofences.count)")
+            GeofencePlugin.fireReceiveTransition(savedTriggeredGeofences)
+            savedTriggeredGeofences.removeAll(keepCapacity: true)
         }
         
         var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
@@ -48,7 +53,7 @@ var GeofencePluginWebView: UIWebView?
 
     func deviceready(command: CDVInvokedUrlCommand) {
         var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
-        commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
+        self.commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
     }
     
     func addOrUpdate(command: CDVInvokedUrlCommand) {
@@ -106,13 +111,28 @@ var GeofencePluginWebView: UIWebView?
         }
     }
     
+    class func fireOrSaveTransition(geoNotification: JSON) {
+        if (GeofencePluginWebView != nil) {
+            GeofencePlugin.fireReceiveTransition(geoNotification)
+        }
+        else {
+            savedTriggeredGeofences.append(geoNotification)
+            log("GeofencePlugin - fireOrSaveTransition - saving transition event")
+        }
+    }
+    
+    class func fireReceiveTransition(geoNotifications: [JSON]!) {
+        let js = "setTimeout('geofence.queueGeofencesForTransition(" + geoNotifications.description + ")',0)";
+        if (GeofencePluginWebView != nil) {
+            GeofencePluginWebView!.stringByEvaluatingJavaScriptFromString(js);
+            log("GeofencePlugin - fireReceiveTransition")
+        }
+    }
+    
     class func fireReceiveTransition(geoNotification: JSON) {
         var mustBeArray = [JSON]()
         mustBeArray.append(geoNotification)
-        let js = "setTimeout('geofence.receiveTransition(" + mustBeArray.description + ")',0)";
-        if (GeofencePluginWebView != nil) {
-            GeofencePluginWebView!.stringByEvaluatingJavaScriptFromString(js);
-        }
+        GeofencePlugin.fireReceiveTransition(mustBeArray)
     }
 }
 
@@ -269,30 +289,35 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     }
 
     func locationManager(manager: CLLocationManager!, didUpdateLocations locations: [AnyObject]!) {
-        log("update location")
+        log("didUpdateLocations")
     }
 
     func locationManager(manager: CLLocationManager!, didFailWithError error: NSError!) {
-        log("fail with error: \(error)")
+        log("didFailWithError: \(error)")
     }
 
     func locationManager(manager: CLLocationManager!, didFinishDeferredUpdatesWithError error: NSError!) {
-        log("deferred fail error: \(error)")
+        log("didFinishDeferredUpdatesWithError - \(error)")
     }
 
     func locationManager(manager: CLLocationManager!, didEnterRegion region: CLRegion!) {
-        log("Entering region \(region.identifier)")
+        if (region is CLCircularRegion) {
+            log("didEnterRegion - \(region.identifier)")
+        }
+        
         handleTransition(region)
     }
 
     func locationManager(manager: CLLocationManager!, didExitRegion region: CLRegion!) {
-        log("Exiting region \(region.identifier)")
+        if (region is CLCircularRegion) {
+            log("didExitRegion - \(region.identifier)")
+        }
         handleTransition(region)
     }
 
     func locationManager(manager: CLLocationManager!, didStartMonitoringForRegion region: CLRegion!) {
         if let geofence = region as? CLCircularRegion {
-            log("Starting monitoring for region \(region) lat \(geofence.center.latitude) lng \(geofence.center.longitude)")
+            log("didStartMonitoringForRegion region - \(region) lat \(geofence.center.latitude) lng \(geofence.center.longitude)")
         }
         else {
             log("Started monitoring an iBeacon")
@@ -300,11 +325,13 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     }
 
     func locationManager(manager: CLLocationManager, didDetermineState state: CLRegionState, forRegion region: CLRegion) {
-        log("State for region " + region.identifier)
+        if (region is CLCircularRegion) {
+            log("didDetermineState - \(region.identifier)")
+        }
     }
 
     func locationManager(manager: CLLocationManager, monitoringDidFailForRegion region: CLRegion!, withError error: NSError!) {
-        log("Monitoring region " + region.identifier + " failed " + error.description)
+        log("monitoringDidFailForRegion - " + region.identifier + " failed " + error.description)
     }
 
     func fireGeofence(id: String) {
@@ -312,7 +339,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
             if let notification = geo["notification"].asDictionary {
                 notifyAbout(geo)
             }
-            GeofencePlugin.fireReceiveTransition(geo)
+            GeofencePlugin.fireOrSaveTransition(geo)
         }
     }
     
@@ -322,7 +349,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
                 if let notification = geo["notification"].asDictionary {
                     notifyAbout(geo)
                 }
-                GeofencePlugin.fireReceiveTransition(geo)
+                GeofencePlugin.fireOrSaveTransition(geo)
             }
         }
         else {
