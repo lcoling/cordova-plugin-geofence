@@ -142,6 +142,7 @@ public class GeoNotificationManager {
             geoNotifications.add(geoNotification);
             GeofencePlugin.fireReceiveTransition(geoNotifications);
         }
+        callback.success();
     }
 
     /*

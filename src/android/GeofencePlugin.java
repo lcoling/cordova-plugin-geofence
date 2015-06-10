@@ -70,9 +70,10 @@ public class GeofencePlugin extends CordovaPlugin {
                     .getWatched();
             callbackContext.success(Gson.get().toJson(geoNotifications));
         } else if (action.equals("initialize")) {
-
+            callbackContext.success();
         } else if (action.equals("deviceready")) {
 			deviceReady();
+            callbackContext.success();
         } else {
             return false;
         }
@@ -87,7 +88,7 @@ public class GeofencePlugin extends CordovaPlugin {
     }
 
     public static void fireReceiveTransition(List<GeoNotification> notifications) {
-        String js = "setTimeout('geofence.receiveTransition("
+        String js = "setTimeout('geofence.queueGeofencesForTransition("
                 + Gson.get().toJson(notifications) + ")',0)";
         if (webView == null) {
             Log.d(TAG, "Webview is null");
