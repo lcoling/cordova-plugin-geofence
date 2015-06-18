@@ -14,16 +14,11 @@ import android.util.Log;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.location.Geofence;
-import com.google.android.gms.location.LocationClient;
-import com.google.android.gms.location.LocationRequest;
 
 public class GeoNotificationManager {
     private Context context;
     private GeoNotificationStore geoNotificationStore;
-    private LocationClient locationClient;
-    private LocationRequest locationRequest;
     private Logger logger;
-    private boolean connectionInProgress = false;
     private List<Geofence> geoFences;
     private PendingIntent pendingIntent;
     private GoogleServiceCommandExecutor googleServiceCommandExecutor;

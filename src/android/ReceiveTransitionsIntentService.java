@@ -10,7 +10,7 @@ import android.content.Intent;
 import android.util.Log;
 
 import com.google.android.gms.location.Geofence;
-import com.google.android.gms.location.LocationClient;
+import com.google.android.gms.location.GeofencingEvent;
 
 public class ReceiveTransitionsIntentService extends IntentService {
     protected BeepHelper beepHelper;
@@ -44,30 +44,31 @@ public class ReceiveTransitionsIntentService extends IntentService {
 
         Logger logger = Logger.getLogger();
         logger.log(Log.DEBUG, "ReceiveTransitionsIntentService - onHandleIntent");
-        // First check for errors
-        if (LocationClient.hasError(intent)) {
+
+        GeofencingEvent event = GeofencingEvent.fromIntent(intent);
+        if (event == null) {
+            logger.log(Log.DEBUG, "ReceiveTransitionsIntentService - onHandleIntent - no geofencing event detected");
+            return;
+        }
+
+        if (event.hasError()) {
             // Get the error code with a static method
-            int errorCode = LocationClient.getErrorCode(intent);
+            int errorCode = event.getErrorCode();
             // Log the error
-            logger.log(Log.ERROR,
-                    "Location Services error: " + Integer.toString(errorCode));
-            /*
-             * You can also send the error code to an Activity or Fragment with
-             * a broadcast Intent
-             */
-            /*
-             * If there's no error, get the transition type and the IDs of the
-             * geofence or geofences that triggered the transition
-             */
-        } else {
+            logger.log(Log.ERROR, "Location Services error: " + Integer.toString(errorCode));
+        }
+        else {
             // Get the type of transition (entry or exit)
-            int transitionType = LocationClient.getGeofenceTransition(intent);
+            int transitionType = event.getGeofenceTransition();
             if ((transitionType == Geofence.GEOFENCE_TRANSITION_ENTER)
                     || (transitionType == Geofence.GEOFENCE_TRANSITION_EXIT)) {
+
                 logger.log(Log.DEBUG, "Geofence transition detected");
-                List<Geofence> triggerList = LocationClient
-                        .getTriggeringGeofences(intent);
+
+                List<Geofence> triggerList = event.getTriggeringGeofences();
+
                 List<GeoNotification> geoNotifications = new ArrayList<GeoNotification>();
+
                 for (Geofence fence : triggerList) {
                     String fenceId = fence.getRequestId();
                     GeoNotification geoNotification = store

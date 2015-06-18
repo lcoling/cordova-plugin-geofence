@@ -8,31 +8,39 @@ import android.os.Bundle;
 import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
-import com.google.android.gms.common.GooglePlayServicesClient.OnConnectionFailedListener;
-import com.google.android.gms.location.LocationClient;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
+import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.GeofencingApi;
 
 public abstract class AbstractGoogleServiceCommand implements
         ConnectionCallbacks, OnConnectionFailedListener {
-    protected LocationClient locationClient;
+
     protected Logger logger;
     protected boolean connectionInProgress = false;
     protected List<IGoogleServiceCommandListener> listeners;
     protected Context context;
+    protected GoogleApiClient googleApiClient = null;
 
     public AbstractGoogleServiceCommand(Context context) {
         this.context = context;
-        locationClient = new LocationClient(context, this, this);
         logger = Logger.getLogger();
         listeners = new ArrayList<IGoogleServiceCommandListener>();
+        googleApiClient = new GoogleApiClient.Builder(context)
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
     }
 
     private void connectToGoogleServices() {
-        if (!locationClient.isConnected() || !locationClient.isConnecting()
+
+        if (!googleApiClient.isConnected() || !googleApiClient.isConnecting()
                 && !connectionInProgress) {
             connectionInProgress = true;
             logger.log(Log.DEBUG, "Connecting location client");
-            locationClient.connect();
+            googleApiClient.connect();
         }
     }
 
@@ -41,38 +49,23 @@ public abstract class AbstractGoogleServiceCommand implements
         connectionInProgress = false;
         logger.log(Log.DEBUG, "Connecting to google services fail - "
                 + connectionResult.toString());
-        /*
-         * Google Play services can resolve some errors it detects. If the error
-         * has a resolution, try sending an Intent to start a Google Play
-         * services activity that can resolve error.
-         */
-        if (connectionResult.hasResolution()) {
-
-            // If no resolution is available, display an error dialog
-        } else {
-
-        }
     }
 
     @Override
     public void onConnected(Bundle arg0) {
         // TODO Auto-generated method stub
         logger.log(Log.DEBUG, "Google play services connected");
-        // Get the PendingIntent for the request
+
+        if (!connectionInProgress)
+            connectionInProgress = true;
+
         ExecuteCustomCode();
     }
 
     @Override
-    public void onDisconnected() {
-        // Turn off the request flag
+    public void onConnectionSuspended(int cause) {
+        logger.log(Log.DEBUG, "Google play services suspended");
         connectionInProgress = false;
-        // Destroy the current location client
-        locationClient = null;
-        // Display the connection status
-        // Toast.makeText(this, DateFormat.getDateTimeInstance().format(new
-        // Date()) + ": Disconnected. Please re-connect.",
-        // Toast.LENGTH_SHORT).show();
-        logger.log(Log.DEBUG, "Google play services Disconnected");
     }
 
     public void addListener(IGoogleServiceCommandListener listener) {
@@ -86,7 +79,7 @@ public abstract class AbstractGoogleServiceCommand implements
     protected void CommandExecuted() {
         // Turn off the in progress flag and disconnect the client
         connectionInProgress = false;
-        locationClient.disconnect();
+        googleApiClient.disconnect();
         for (IGoogleServiceCommandListener listener : listeners) {
             listener.onCommandExecuted();
         }
