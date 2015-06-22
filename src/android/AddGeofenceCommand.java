@@ -10,6 +10,7 @@ import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationServices;
 
 
@@ -28,7 +29,14 @@ public class AddGeofenceCommand extends AbstractGoogleServiceCommand {
     public void ExecuteCustomCode() {
         // TODO Auto-generated method stub
         logger.log(Log.DEBUG, "Adding new geofences");
-        PendingResult<Status> result = LocationServices.GeofencingApi.addGeofences(googleApiClient, geofencesToAdd, pendingIntent);
+
+        GeofencingRequest geofencingRequest = new GeofencingRequest.Builder()
+                .addGeofences(geofencesToAdd)
+                .build();
+
+        PendingResult<Status> result = LocationServices.GeofencingApi
+                .addGeofences(googleApiClient, geofencingRequest, pendingIntent);
+
         result.setResultCallback(new ResultCallback<Status>() {
             @Override
             public void onResult(Status status) {

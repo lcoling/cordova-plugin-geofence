@@ -134,7 +134,7 @@ public class GeofencePlugin extends CordovaPlugin {
                     public void run() {
                         saveLogcatLogs();
                     }
-                }, 1, 2, TimeUnit.MINUTES);
+                }, 1, 3, TimeUnit.MINUTES);
         */
     }
 
