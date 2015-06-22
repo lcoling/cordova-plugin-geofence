@@ -21,10 +21,11 @@
 
     <dependency id="com.vladstirbu.cordova.promise" url="https://github.com/vstirbu/PromisesPlugin.git" />
     <dependency id="android.support.v4" />
-    <dependency id="com.google.playservices" />
-
+    
     <!-- android -->
     <platform name="android">
+		<framework src="com.google.android.gms:play-services-location:7.5.0" />
+		
         <source-file src="src/android/AbstractGoogleServiceCommand.java" target-dir="src/com/cowbell/cordova/geofence" />
         <source-file src="src/android/AddGeofenceCommand.java" target-dir="src/com/cowbell/cordova/geofence" />
         <source-file src="src/android/AssetUtil.java" target-dir="src/com/cowbell/cordova/geofence" />
