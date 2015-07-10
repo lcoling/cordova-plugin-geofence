@@ -4,6 +4,9 @@ import com.google.android.gms.location.Geofence;
 import com.google.gson.annotations.Expose;
 
 public class GeoNotification {
+
+    public static final int MINIMUM_RADIUS = 100;
+
     @Expose public String id;
     @Expose public double latitude;
     @Expose public double longitude;
@@ -16,10 +19,12 @@ public class GeoNotification {
     }
 
     public Geofence toGeofence() {
-        return new Geofence.Builder().setRequestId(id)
-        .setTransitionTypes(transitionType)
-        .setCircularRegion(latitude, longitude, radius)
-        .setExpirationDuration(Long.MAX_VALUE).build();
+        return new Geofence.Builder()
+            .setRequestId(id)
+            .setTransitionTypes(transitionType)
+            .setCircularRegion(latitude, longitude, radius)
+            .setExpirationDuration(Long.MAX_VALUE)
+            .build();
     }
 
     public String toJson() {
@@ -29,6 +34,15 @@ public class GeoNotification {
     public static GeoNotification fromJson(String json) {
         if (json == null)
             return null;
-        return Gson.get().fromJson(json, GeoNotification.class);
+
+        GeoNotification geo = Gson.get().fromJson(json, GeoNotification.class);
+
+        // geofences in android are terribly inaccurate so we're implementing
+        // a minimum radius of 100m
+        if (geo.radius < MINIMUM_RADIUS) {
+            geo.radius = MINIMUM_RADIUS;
+        }
+
+        return geo;
     }
 }
