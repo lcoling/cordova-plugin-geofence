@@ -39,21 +39,25 @@ var GeofencePluginWebView: UIWebView?
             savedTriggeredGeofences.removeAll(keepCapacity: true)
         }
         
-        var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
-        commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
+        let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
+        self.commandDelegate!.sendPluginResult(pluginResult, callbackId: command.callbackId)
     }
 
     func promptForNotificationPermission() {
-        UIApplication.sharedApplication().registerUserNotificationSettings(UIUserNotificationSettings(
-            forTypes: UIUserNotificationType.Sound | UIUserNotificationType.Alert | UIUserNotificationType.Badge,
-            categories: nil
+        if #available(iOS 8.0, *) {
+            UIApplication.sharedApplication().registerUserNotificationSettings(UIUserNotificationSettings(
+                forTypes: [UIUserNotificationType.Sound, UIUserNotificationType.Alert, UIUserNotificationType.Badge],
+                categories: nil
+                )
             )
-        )
+        } else {
+            // Fallback on earlier versions
+        }
     }
 
     func deviceready(command: CDVInvokedUrlCommand) {
-        var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
-        self.commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
+        let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
+        self.commandDelegate!.sendPluginResult(pluginResult, callbackId: command.callbackId)
     }
     
     func addOrUpdate(command: CDVInvokedUrlCommand) {
@@ -63,8 +67,8 @@ var GeofencePluginWebView: UIWebView?
                 self.geoNotificationManager.addOrUpdateGeoNotification(JSON(geo))
             }
             dispatch_async(dispatch_get_main_queue()) {
-                var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
-                self.commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
+                let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
+                self.commandDelegate!.sendPluginResult(pluginResult, callbackId: command.callbackId)
             }
         }
     }
@@ -74,8 +78,8 @@ var GeofencePluginWebView: UIWebView?
             var watched = self.geoNotificationManager.getWatchedGeoNotifications()!
             let watchedJsonString = watched.description
             dispatch_async(dispatch_get_main_queue()) {
-                var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAsString: watchedJsonString)
-                self.commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
+                let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAsString: watchedJsonString)
+                self.commandDelegate!.sendPluginResult(pluginResult, callbackId: command.callbackId)
             }
         }
     }
@@ -86,8 +90,8 @@ var GeofencePluginWebView: UIWebView?
                 self.geoNotificationManager.removeGeoNotification(id as! String)
             }
             dispatch_async(dispatch_get_main_queue()) {
-                var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
-                self.commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
+                let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
+                self.commandDelegate!.sendPluginResult(pluginResult, callbackId: command.callbackId)
             }
         }
     }
@@ -96,18 +100,18 @@ var GeofencePluginWebView: UIWebView?
         dispatch_async(dispatch_get_global_queue(priority, 0)) {
             self.geoNotificationManager.removeAllGeoNotifications()
             dispatch_async(dispatch_get_main_queue()) {
-                var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
-                self.commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
+                let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
+                self.commandDelegate!.sendPluginResult(pluginResult, callbackId: command.callbackId)
             }
         }
     }
 
     func fireGeofence(command: CDVInvokedUrlCommand) {
-        var id: String = command.argumentAtIndex(0) as! String;
+        let id: String = command.argumentAtIndex(0) as! String;
         self.geoNotificationManager.fireGeofence(id)
         dispatch_async(dispatch_get_main_queue()) {
-            var pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
-            self.commandDelegate.sendPluginResult(pluginResult, callbackId: command.callbackId)
+            let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK)
+            self.commandDelegate!.sendPluginResult(pluginResult, callbackId: command.callbackId)
         }
     }
     
@@ -156,7 +160,7 @@ class GeofenceFaker {
                     if geos.count > 0 {
                         //WTF Swift??
                         let index = arc4random_uniform(UInt32(geos.count))
-                        var geo = geos[Int(index)]
+                        let geo = geos[Int(index)]
                         let id = geo["id"].asString!
                         dispatch_async(dispatch_get_main_queue()) {
                             if let region = self.geoNotificationManager.getMonitoredRegion(id) {
@@ -206,8 +210,12 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     func requestPermission() {
         if (!requestedPermission) {
             requestedPermission = true
-            if iOS8 {
+            if #available(iOS 8.0, *) {
                 locationManager.requestAlwaysAuthorization()
+            } else {
+                // Fallback on earlier versions
+                // Prior to iOS 8, there is no need for these permissions, therefore we can
+                // send back OK to the calling DOM without any further ado.
             }
         }
     }
@@ -221,31 +229,34 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
             log("Locationservices is not enabled")
         }
 
-        var location = CLLocationCoordinate2DMake(
+        let location = CLLocationCoordinate2DMake(
             geoNotification["latitude"].asDouble!,
             geoNotification["longitude"].asDouble!
         )
+        
         log("AddOrUpdate geo: \(geoNotification)")
-        var radius = geoNotification["radius"].asDouble! as CLLocationDistance
+        
+        let radius = geoNotification["radius"].asDouble! as CLLocationDistance
         //let uuid = NSUUID().UUIDString
-        let id = geoNotification["id"].asString
-
-        var region = CLCircularRegion(
-            circularRegionWithCenter: location,
-            radius: radius,
-            identifier: id
-        )
-
-        var transitionType = 0
-        if let i = geoNotification["transitionType"].asInt {
-            transitionType = i
+        
+        if let id = geoNotification["id"].asString {
+            let region = CLCircularRegion(center: location, radius: radius, identifier: id)
+            
+            var transitionType = 0
+            if let i = geoNotification["transitionType"].asInt {
+                transitionType = i
+            }
+            region.notifyOnEntry = 0 != transitionType & 1
+            region.notifyOnExit = 0 != transitionType & 2
+            
+            //store
+            store.addOrUpdate(geoNotification)
+            locationManager.startMonitoringForRegion(region)
         }
-        region.notifyOnEntry = 0 != transitionType & 1
-        region.notifyOnExit = 0 != transitionType & 2
+        else {
+            log("Geofence not registered due to missing id value")
+        }
 
-        //store
-        store.addOrUpdate(geoNotification)
-        locationManager.startMonitoringForRegion(region)
     }
 
     func getWatchedGeoNotifications() -> [JSON]? {
@@ -269,8 +280,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
         requestPermission()
         
         store.remove(id)
-        var region = getMonitoredRegion(id)
-        if (region != nil) {
+        if let region = getMonitoredRegion(id) {
             log("Stoping monitoring region \(id)")
             locationManager.stopMonitoringForRegion(region)
         }
@@ -288,19 +298,19 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
         }
     }
 
-    func locationManager(manager: CLLocationManager!, didUpdateLocations locations: [AnyObject]!) {
+    func locationManager(manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         log("didUpdateLocations")
     }
 
-    func locationManager(manager: CLLocationManager!, didFailWithError error: NSError!) {
+    func locationManager(manager: CLLocationManager, didFailWithError error: NSError) {
         log("didFailWithError: \(error)")
     }
 
-    func locationManager(manager: CLLocationManager!, didFinishDeferredUpdatesWithError error: NSError!) {
+    func locationManager(manager: CLLocationManager, didFinishDeferredUpdatesWithError error: NSError?) {
         log("didFinishDeferredUpdatesWithError - \(error)")
     }
 
-    func locationManager(manager: CLLocationManager!, didEnterRegion region: CLRegion!) {
+    func locationManager(manager: CLLocationManager, didEnterRegion region: CLRegion) {
         if (region is CLCircularRegion) {
             log("didEnterRegion - \(region.identifier)")
         }
@@ -308,14 +318,14 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
         handleTransition(region)
     }
 
-    func locationManager(manager: CLLocationManager!, didExitRegion region: CLRegion!) {
+    func locationManager(manager: CLLocationManager, didExitRegion region: CLRegion) {
         if (region is CLCircularRegion) {
             log("didExitRegion - \(region.identifier)")
         }
         handleTransition(region)
     }
 
-    func locationManager(manager: CLLocationManager!, didStartMonitoringForRegion region: CLRegion!) {
+    func locationManager(manager: CLLocationManager, didStartMonitoringForRegion region: CLRegion) {
         if let geofence = region as? CLCircularRegion {
             log("didStartMonitoringForRegion region - \(region) lat \(geofence.center.latitude) lng \(geofence.center.longitude)")
         }
@@ -325,18 +335,21 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     }
 
     func locationManager(manager: CLLocationManager, didDetermineState state: CLRegionState, forRegion region: CLRegion) {
-        if (region is CLCircularRegion) {
-            log("didDetermineState - \(region.identifier)")
+        if let circular = region as? CLCircularRegion {
+            log("didDetermineState - \(circular.identifier)")
         }
     }
 
-    func locationManager(manager: CLLocationManager, monitoringDidFailForRegion region: CLRegion!, withError error: NSError!) {
-        log("monitoringDidFailForRegion - " + region.identifier + " failed " + error.description)
+    func locationManager(manager: CLLocationManager, monitoringDidFailForRegion region: CLRegion?, withError error: NSError) {
+        if let r = region {
+            log("monitoringDidFailForRegion - " + r.identifier + " failed " + error.description)
+        }
+        
     }
 
     func fireGeofence(id: String) {
         if let geo = store.findById(id) {
-            if let notification = geo["notification"].asDictionary {
+            if let _ = geo["notification"].asDictionary {
                 notifyAbout(geo)
             }
             GeofencePlugin.fireOrSaveTransition(geo)
@@ -346,7 +359,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     func handleTransition(region: CLRegion!) {
         if let geofence = region as? CLCircularRegion {
             if let geo = store.findById(geofence.identifier) {
-                if let notification = geo["notification"].asDictionary {
+                if let _ = geo["notification"].asDictionary {
                     notifyAbout(geo)
                 }
                 GeofencePlugin.fireOrSaveTransition(geo)
@@ -371,9 +384,9 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
         comps.second = delayInSeconds;
         
         let cal = NSCalendar.currentCalendar()
-        var fireDate = cal.dateByAddingComponents(comps, toDate: NSDate(), options: nil)
+        let fireDate = cal.dateByAddingComponents(comps, toDate: NSDate(), options: [])
         
-        var notification = UILocalNotification()
+        let notification = UILocalNotification()
         notification.timeZone = NSTimeZone.defaultTimeZone()
         notification.fireDate = fireDate
         notification.soundName = UILocalNotificationDefaultSoundName
@@ -390,7 +403,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
     }
     
     func buildUserInfoDictionary(geo: JSON) -> [NSObject:AnyObject] {
-        var userInfo = NSMutableDictionary()
+        let userInfo = NSMutableDictionary()
 
         userInfo.setObject(geo["notification"]["id"].asInt!, forKey:"id")
         userInfo.setObject(geo["notification"]["title"].asString!, forKey:"title")
@@ -398,7 +411,7 @@ class GeoNotificationManager : NSObject, CLLocationManagerDelegate {
         userInfo.setObject(geo["notification"]["icon"].asString!, forKey:"icon")
         userInfo.setObject(geo["notification"]["smallIcon"].asString!, forKey:"smallIcon")
         
-        var survey = NSMutableDictionary()
+        let survey = NSMutableDictionary()
         survey.setObject(geo["notification"]["data"]["id"].asString!, forKey: "id")
         
         userInfo.setObject(survey, forKey:"data")
