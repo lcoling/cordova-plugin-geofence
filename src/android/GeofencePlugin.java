@@ -20,6 +20,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.Context;
 import android.location.LocationListener;
