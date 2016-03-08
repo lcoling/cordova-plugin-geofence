@@ -34,10 +34,7 @@ public class GeofencePlugin extends CordovaPlugin {
     private static CordovaWebView webView = null;
     private SimpleDateFormat dt = new SimpleDateFormat("yyyyMMddhhmmss");
     private int pid = android.os.Process.myPid();
-    private CallbackContext savedCallbackContext = null;
 
-    public static final String [] ALLOW_LOCATIONS = { Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION };
-    public static final int LOCATION_REQ_CODE = 0;
     /**
      * @param cordova
      *            The context of the main Activity.
@@ -51,32 +48,6 @@ public class GeofencePlugin extends CordovaPlugin {
         context = this.cordova.getActivity().getApplicationContext();
         Logger.setLogger(new Logger(TAG, context, false));
         geoNotificationManager = new GeoNotificationManager(context);
-    }
-
-    @Override
-    public void onRequestPermissionResult(int requestCode, String[] permissions,
-                                          int[] grantResults) throws JSONException
-    {
-        Log.d(TAG, "GeofencePlugin onRequestPermissionResult");
-
-        for(int r:grantResults)
-        {
-            if(r == PackageManager.PERMISSION_DENIED)
-            {
-                Log.d(TAG, "GeofencePlugin onRequestPermissionResult: PackageManager.PERMISSION_DENIED");
-                if( savedCallbackContext != null )
-                    savedCallbackContext.error("Permission Denied");
-
-                return;
-            }
-        }
-        switch(requestCode)
-        {
-            case LOCATION_REQ_CODE: {
-                Log.d(TAG, "GeofencePlugin onRequestPermissionResult: PERMISSION_GRANTED");
-                savedCallbackContext.success();
-            }
-        }
     }
 
     @Override
@@ -113,11 +84,7 @@ public class GeofencePlugin extends CordovaPlugin {
                     .getWatched();
             callbackContext.success(Gson.get().toJson(geoNotifications));
         } else if (action.equals("initialize")) {
-            if(cordova.hasPermission(ALLOW_LOCATIONS[0]) && cordova.hasPermission(ALLOW_LOCATIONS[1])) {
-                callbackContext.success();
-            } else {
-                cordova.requestPermissions(this, LOCATION_REQ_CODE, ALLOW_LOCATIONS);
-            }
+            callbackContext.success();
         } else if (action.equals("deviceready")) {
             deviceReady();
             callbackContext.success();
