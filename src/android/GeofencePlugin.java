@@ -76,7 +76,8 @@ public class GeofencePlugin extends CordovaPlugin {
         {
             case LOCATION_REQ_CODE: {
                 Log.d(TAG, "GeofencePlugin onRequestPermissionResult: PERMISSION_GRANTED");
-                savedCallbackContext.success();
+                if( savedCallbackContext != null )
+                    savedCallbackContext.success();
             }
         }
     }
@@ -87,6 +88,8 @@ public class GeofencePlugin extends CordovaPlugin {
 
         Log.d(TAG, "GeofencePlugin execute action: " + action + " args: "
                 + args.toString());
+
+        savedCallbackContext = callbackContext;
 
         if (action.equals("addOrUpdate")) {
             List<GeoNotification> geoNotifications = new ArrayList<GeoNotification>();
