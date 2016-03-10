@@ -20,8 +20,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.util.Log;
@@ -34,6 +36,10 @@ public class GeofencePlugin extends CordovaPlugin {
     private static CordovaWebView webView = null;
     private SimpleDateFormat dt = new SimpleDateFormat("yyyyMMddhhmmss");
     private int pid = android.os.Process.myPid();
+    private CallbackContext savedCallbackContext = null;
+
+    public static final String [] ALLOW_LOCATIONS = { Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION };
+    public static final int LOCATION_REQ_CODE = 0;
 
     /**
      * @param cordova
@@ -51,11 +57,40 @@ public class GeofencePlugin extends CordovaPlugin {
     }
 
     @Override
+    public void onRequestPermissionResult(int requestCode, String[] permissions,
+                                          int[] grantResults) throws JSONException
+    {
+        Log.d(TAG, "GeofencePlugin onRequestPermissionResult");
+
+        for(int r:grantResults)
+        {
+            if(r == PackageManager.PERMISSION_DENIED)
+            {
+                Log.d(TAG, "GeofencePlugin onRequestPermissionResult: PackageManager.PERMISSION_DENIED");
+                if( savedCallbackContext != null )
+                    savedCallbackContext.error("Permission Denied");
+
+                return;
+            }
+        }
+        switch(requestCode)
+        {
+            case LOCATION_REQ_CODE: {
+                Log.d(TAG, "GeofencePlugin onRequestPermissionResult: PERMISSION_GRANTED");
+                if( savedCallbackContext != null )
+                    savedCallbackContext.success();
+            }
+        }
+    }
+
+    @Override
     public boolean execute(final String action, final JSONArray args,
             final CallbackContext callbackContext) throws JSONException {
 
         Log.d(TAG, "GeofencePlugin execute action: " + action + " args: "
                 + args.toString());
+
+        savedCallbackContext = callbackContext;
 
         if (action.equals("addOrUpdate")) {
             List<GeoNotification> geoNotifications = new ArrayList<GeoNotification>();
@@ -84,7 +119,11 @@ public class GeofencePlugin extends CordovaPlugin {
                     .getWatched();
             callbackContext.success(Gson.get().toJson(geoNotifications));
         } else if (action.equals("initialize")) {
-            callbackContext.success();
+            if(cordova.hasPermission(ALLOW_LOCATIONS[0]) || cordova.hasPermission(ALLOW_LOCATIONS[1])) {
+                callbackContext.success();
+            } else {
+                cordova.requestPermissions(this, LOCATION_REQ_CODE, ALLOW_LOCATIONS);
+            }
         } else if (action.equals("deviceready")) {
             deviceReady();
             callbackContext.success();
