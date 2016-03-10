@@ -36,6 +36,10 @@ public class GeofencePlugin extends CordovaPlugin {
     private static CordovaWebView webView = null;
     private SimpleDateFormat dt = new SimpleDateFormat("yyyyMMddhhmmss");
     private int pid = android.os.Process.myPid();
+    private CallbackContext savedCallbackContext = null;
+
+    public static final String [] ALLOW_LOCATIONS = { Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION };
+    public static final int LOCATION_REQ_CODE = 0;
 
     /**
      * @param cordova
